@@ -50,6 +50,7 @@ import re
 from bs4 import BeautifulSoup
 from contractions import CONTRACTION_MAP
 import unicodedata
+
 nlp = spacy.load('en_core', parse=True, tag=True, entity=True)
 #nlp_vec = spacy.load('en_vecs', parse = True, tag=True, #entity=True)
 tokenizer = ToktokTokenizer()
@@ -122,3 +123,36 @@ def lemmatize_text(text):
     return text
 
 lemmatize_text("My system keeps crashing! his crashed yesterday, ours crashes daily")
+
+
+# Web Scrapping using beautifulsoup
+seed_urls = ['https://inshorts.com/en/read/technology',
+             'https://inshorts.com/en/read/sports',
+             'https://inshorts.com/en/read/world']
+
+def build_dataset(seed_urls):
+    news_data = []
+    for url in seed_urls:
+        news_category = url.split('/')[-1]
+        data = requests.get(url)
+        soup = BeautifulSoup(data.content, 'html.parser')
+        
+        news_articles = [{'news_headline': headline.find('span', 
+                                                         attrs={"itemprop": "headline"}).string,
+                          'news_article': article.find('div', 
+                                                       attrs={"itemprop": "articleBody"}).string,
+                          'news_category': news_category}
+                         
+                            for headline, article in 
+                             zip(soup.find_all('div', 
+                                               class_=["news-card-title news-right-box"]),
+                                 soup.find_all('div', 
+                                               class_=["news-card-content news-right-box"]))
+                        ]
+        news_data.extend(news_articles)
+        
+    df =  pd.DataFrame(news_data)
+    df = df[['news_headline', 'news_article', 'news_category']]
+    return df
+
+
